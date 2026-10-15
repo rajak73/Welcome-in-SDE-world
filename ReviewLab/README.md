@@ -1,68 +1,138 @@
 # Proof Review Lab
 
-This lab trains proof review, not just tactic use. Each broken snippet is kept
-in Markdown and is intentionally **not** imported by the Lean build. Try to
-identify the mathematical defect before reading the review notes.
+This lab trains proof review, not just tactic use. Every invalid example below
+lives only in this Markdown file and is intentionally excluded from the Lean
+build. For each case, review the statement before debugging the tactics.
 
 ## 1. Omitted assumption
 
+**Exact proposed statement**
+
 ```lean
--- Broken proof approach: positivity is not available.
+theorem square_positive_bad (n : ℕ) : 0 < n ^ 2
+```
+
+**Intentionally flawed attempt**
+
+```lean
 theorem square_positive_bad (n : ℕ) : 0 < n ^ 2 := by
   positivity
 ```
 
-**Why it fails:** the claim is false at `n = 0`. The theorem omitted the
-assumption `0 < n`, which the informal argument needs.
+**Why it fails:** the statement omits the assumption `0 < n`. Automation cannot
+prove a false claim.
 
-**Review habit:** inspect the smallest values and list every condition used by
-the paper proof. Compare the explicit boundary assumption in
-`Proofbook.le_square`.
+**Counterexample:** set `n := 0`. The conclusion reduces to `0 < 0`, which is
+false. Lean therefore leaves the positivity goal unsolved.
 
-## 2. Incorrect theorem statement
+**Compare with:**
+[`Proofbook.le_square`](../WelcomeSDEWorld/Proofbook/NumberTheory.lean), which
+states its necessary boundary assumption explicitly:
 
 ```lean
--- Broken: 1 and 3 are odd, but their sum is 4, not odd.
+theorem le_square {n : ℕ} (h : 1 ≤ n) : n ≤ n ^ 2
+```
+
+## 2. Incorrect conclusion
+
+**Exact proposed statement**
+
+```lean
+theorem odd_add_odd_bad {a b : ℕ} (ha : Odd a) (hb : Odd b) : Odd (a + b)
+```
+
+**Intentionally flawed attempt**
+
+```lean
 theorem odd_add_odd_bad {a b : ℕ} (ha : Odd a) (hb : Odd b) : Odd (a + b) := by
   obtain ⟨m, rfl⟩ := ha
   obtain ⟨n, rfl⟩ := hb
-  -- no valid witness exists
+  -- No oddness witness can close the remaining goal.
 ```
 
-**Why it fails:** the conclusion is mathematically false. No tactic should be
-expected to repair it.
+**Why it fails:** two odd numbers sum to an even number, so the requested
+oddness witness does not exist.
 
-**Review habit:** test a concrete example before reviewing proof mechanics. The
-correct conclusion is `Even (a + b)`; see `Proofbook.odd_add_odd`.
+**Counterexample:** `a := 1` and `b := 3` satisfy both assumptions, but their
+sum is `4`; Lean can decide `¬ Odd 4`.
 
-## 3. Missing base case
+**Compare with:**
+[`Proofbook.odd_add_odd`](../WelcomeSDEWorld/Proofbook/Parity.lean), whose
+correct conclusion is:
 
 ```lean
--- Broken sketch: the empty list case is absent.
+theorem odd_add_odd {a b : ℕ} (ha : Odd a) (hb : Odd b) : Even (a + b)
+```
+
+## 3. Missing induction case
+
+**Exact proposed statement**
+
+```lean
+theorem reverse_length_bad (xs : List α) : xs.reverse.length = xs.length
+```
+
+**Intentionally flawed attempt**
+
+```lean
 theorem reverse_length_bad (xs : List α) : xs.reverse.length = xs.length := by
   induction xs with
   | cons x xs ih => simp [ih]
 ```
 
-**Why it fails:** structural induction on a list creates both `nil` and `cons`
-goals. Handling only the recursive case leaves a goal unsolved.
+**Why it fails:** list induction creates one goal for each constructor, but the
+attempt handles only `List.cons`.
 
-**Review habit:** after every `induction`, account for every constructor. The
-verified algorithm proves its length property in `Algorithms.reverse_length`.
+**Relevant Lean error:** Lean reports an unsolved `nil` alternative. Its goal is
+the base case:
 
-## 4. Edge case hidden by an over-broad claim
+```text
+⊢ [].reverse.length = [].length
+```
+
+**Compare with:**
+[`Algorithms.reverseAcc_eq`](../WelcomeSDEWorld/Algorithms/List.lean), which
+shows both required branches:
 
 ```lean
--- Broken: `% 0` is defined for naturals, but its result is not less than 0.
+induction xs generalizing acc with
+| nil => rfl
+| cons x xs ih => ...
+```
+
+## 4. Unchecked modulus edge case
+
+**Exact proposed statement**
+
+```lean
+theorem remainder_bad (a n : ℕ) : a % n < n
+```
+
+**Intentionally flawed attempt**
+
+```lean
 theorem remainder_bad (a n : ℕ) : a % n < n := by
   exact Nat.mod_lt a (by omega)
 ```
 
-**Why it fails:** `Nat.mod_lt` requires `0 < n`; that cannot be derived for an
-arbitrary natural `n`. At `n = 0`, the strict inequality is impossible.
+**Why it fails:** `Nat.mod_lt` requires a proof of `0 < n`, which cannot be
+derived for an arbitrary natural number.
 
-**Review habit:** inspect zero denominators, empty structures, and interval
-endpoints. The corrected `Proofbook.remainder_lt` exposes `0 < n` as an input.
+**Counterexample and goal:** for `n := 0`, the conclusion becomes `a % 0 < 0`,
+which is impossible. In the attempted proof, Lean leaves the side goal:
+
+```text
+a n : ℕ
+⊢ 0 < n
+```
+
+**Compare with:**
+[`Proofbook.remainder_lt`](../WelcomeSDEWorld/Proofbook/NumberTheory.lean), which
+accepts precisely that missing assumption:
+
+```lean
+theorem remainder_lt {a n : ℕ} (h : 0 < n) : a % n < n
+```
 
 ## Review checklist
 

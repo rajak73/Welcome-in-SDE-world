@@ -14,6 +14,14 @@ theorem reverseAcc_eq (xs acc : List α) : reverseAcc xs acc = xs.reverse ++ acc
   | cons x xs ih =>
       simp [reverseAcc, ih, List.reverse_cons, List.append_assoc]
 
+/-- The accumulator invariant also accounts for every output element. -/
+theorem reverseAcc_length (xs acc : List α) :
+    (reverseAcc xs acc).length = xs.length + acc.length := by
+  induction xs generalizing acc with
+  | nil => simp [reverseAcc]
+  | cons x xs ih =>
+      simp [reverseAcc, ih, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+
 /-- A public accumulator-based reverse. -/
 def reverse (xs : List α) : List α := reverseAcc xs []
 
@@ -38,6 +46,14 @@ theorem mapRevAcc_eq (f : α → β) (xs : List α) (acc : List β) :
   | nil => rfl
   | cons x xs ih =>
       simp [mapRevAcc, ih, List.reverse_cons, List.append_assoc]
+
+/-- Mapping changes values but the accumulator invariant fixes the output size. -/
+theorem mapRevAcc_length (f : α → β) (xs : List α) (acc : List β) :
+    (mapRevAcc f xs acc).length = xs.length + acc.length := by
+  induction xs generalizing acc with
+  | nil => simp [mapRevAcc]
+  | cons x xs ih =>
+      simp [mapRevAcc, ih, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
 
 /-- A tail-recursive map assembled by reversing the accumulated result. -/
 def mapTR (f : α → β) (xs : List α) : List β :=

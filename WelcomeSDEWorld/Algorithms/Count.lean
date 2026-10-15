@@ -34,4 +34,13 @@ theorem countWhere_map (p : β → Bool) (f : α → β) (xs : List α) :
   | nil => rfl
   | cons x xs ih => simp [countWhere, ih]
 
+/-- A predicate and its Boolean complement partition every list. -/
+theorem countWhere_complement (p : α → Bool) (xs : List α) :
+    countWhere p xs + countWhere (fun x => !(p x)) xs = xs.length := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+      cases h : p x <;>
+        simp [countWhere, h, ih, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm]
+
 end WelcomeSDEWorld.Algorithms
